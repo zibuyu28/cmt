@@ -39,7 +39,9 @@
 * 构建二进制
   * 使用go命令构建：`go build -o git-cm .`
   * 如果想要使用 `git` 的 `subcommands`, 类似：`git mytool`，需要将构建的二进制名称进行重命名成`git-mytool`
-* 将二进制加入到`PATH`中
+* 将二进制加入到`PATH`中（zsh示例）
+  * echo "{cmtpath}:$PATH" > ~/.zshrc
+  * source ~/.zshrc
 ---
 #### 4. feature
 * 增加type配置
