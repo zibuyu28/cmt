@@ -36,16 +36,18 @@
 ---
 #### 3. 使用
 * 按照需求进行改动每一项输入的逻辑改动
-* 构建二进制
+* 构建可执行文件
   * 使用go命令构建：`go build -o git-cm .`
+  * 支持`ldflags`：`go build -ldflags="-X main.zh=t" -o git-cm .`, `type`的说明支持中文
   * 如果想要使用 `git` 的 `subcommands`, 类似：`git mytool`，需要将构建的二进制名称进行重命名成`git-mytool`
-* 将二进制加入到`PATH`中（zsh示例）
+* 将可执行文件加入到`PATH`中（zsh示例）
   * echo "{cmtpath}:$PATH" > ~/.zshrc
   * source ~/.zshrc
 ---
 #### 4. feature
-* 增加type配置
-* 增加提交说明格式配置
-* 增加输入项配置
+* ~~增加type配置~~
+* ~~增加提交说明格式配置~~
+* ~~增加输入项配置~~
 ---
 #### 5. Enjoy it!
+* 欢迎fork，代码逻辑较为简单，可以根据自身需要进行定制化开发

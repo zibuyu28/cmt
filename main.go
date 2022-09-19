@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"regexp"
 	"strings"
+	"text/template"
 	"time"
 )
 
@@ -25,7 +26,18 @@ var typeMap = map[string]string{
 	"WIP":      "Work in progress",
 }
 
-var scopeReg = regexp.MustCompile("^[a-z0-9]{2,20}$")
+var typeMapZh = map[string]string{
+	"feat":     "新功能",
+	"fix":      "修复bug",
+	"docs":     "修改文档",
+	"style":    "改动的代码不影响代码含义（空格、格式和换行等）",
+	"refactor": "既不修复错误也不添加功能的代码更改",
+	"perf":     "提高性能的代码更改",
+	"test":     "添加单测",
+	"chore":    "对构建过程或辅助工具和库（例如文档生成）的更改",
+	"revert":   "恢复至某次提交",
+	"WIP":      "工作正在进行中",
+}
 
 type Answer struct {
 	Type    string `survey:"type"`
@@ -33,15 +45,6 @@ type Answer struct {
 	Message string `survey:"message"`
 	Version string `survey:"version"`
 	TBNum   string `survey:"tb_num"`
-}
-
-type simpleWriter struct {
-	cmdReturn string
-}
-
-func (s *simpleWriter) Write(p []byte) (n int, err error) {
-	s.cmdReturn = string(p)
-	return len(p), nil
 }
 
 func main() {
@@ -58,21 +61,46 @@ func main() {
 	commit(ans)
 }
 
+type simpleWriter struct {
+	cmdReturn string
+}
+
+func (s *simpleWriter) Write(p []byte) (n int, err error) {
+	s.cmdReturn = s.cmdReturn + string(p)
+	return len(p), nil
+}
+
+const (
+	commitTemplate = "{{.Type}}({{.Scope}}): {{.Message}}({{.Version}}-{{.TBNum}})"
+)
+
 func commit(ans *Answer) {
-	commitmsg := fmt.Sprintf("%s(%s): %s(%s-%s)", ans.Type, ans.Scope, ans.Message, ans.Version, ans.TBNum)
+	parse, err := template.New("commit").Parse(commitTemplate)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	writer := &simpleWriter{}
+	err = parse.Execute(writer, ans)
+	if err != nil {
+		fmt.Println(err.Error())
+		os.Exit(1)
+	}
+	commitmsg := writer.cmdReturn
 	fmt.Printf("commit message : %s\n", commitmsg)
 	commandContext := exec.Command("git", "commit", "-m", fmt.Sprintf("%s", commitmsg))
 	commandContext.Stdout = os.Stdout
 	commandContext.Stderr = os.Stdout
-	err := commandContext.Run()
+	err = commandContext.Run()
 	if err != nil {
 		fmt.Println(err.Error())
 		os.Exit(1)
 	}
 }
 
+var commitReg = regexp.MustCompile("^([^(]*)\\(([^)]*)\\):\\s([^(]*)\\(([v\\.0-9]{6,15})-([^)]*)\\)$")
+
 func defaultConstruct(ans *Answer, lastCommit string) {
-	commitReg := regexp.MustCompile("^([^(]*)\\(([^)]*)\\):\\s([^(]*)\\(([v\\.0-9]{6,15})-([^)]*)\\)$")
 	submatch := commitReg.FindAllStringSubmatch(lastCommit, -1)
 	if len(submatch) == 1 && len(submatch[0]) == 6 {
 		ans.Type = submatch[0][1]
@@ -105,6 +133,7 @@ func lastCommit() (string, error) {
 	return resp, nil
 }
 
+var zh string
 var tpq = &survey.Question{
 	Name: "type",
 	Prompt: &survey.Select{
@@ -112,12 +141,16 @@ var tpq = &survey.Question{
 		//Options: []string{"feat", "fix", "docs", "style", "refactor", "perf", "test", "chore", "revert", "WIP"},
 		Options: []string{"feat", "fix", "docs", "style", "perf", "test", "chore"},
 		Description: func(value string, index int) string {
+			if zh != "" {
+				return typeMapZh[value]
+			}
 			return typeMap[value]
 		},
 	},
 	Validate: survey.Required,
 }
 
+var scopeReg = regexp.MustCompile("^[a-z0-9]{2,20}$")
 var scopeq = &survey.Question{
 	Name: "scope",
 	Prompt: &survey.Input{
